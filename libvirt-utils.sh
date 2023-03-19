@@ -42,10 +42,11 @@ vm.new() {
 
 vm.ipv4() {
   VM_NAME="$1"
-  virsh qemu-agent-command "${VM_NAME}"\
+  IPV4=$(virsh qemu-agent-command "${VM_NAME}"\
     '{"execute":"guest-network-get-interfaces"}'|\
     jq '.return[]."ip-addresses"'| \
-    jq -rs 'flatten | .[] | select(."ip-address-type" == "ipv4")| select(."ip-address" != "127.0.0.1") | ."ip-address"'
+    jq -rs 'flatten | .[] | select(."ip-address-type" == "ipv4")| select(."ip-address" != "127.0.0.1") | ."ip-address"')
+  if [ -z "${IPV4}" ]; then echo "undefined"; else echo "${IPV4}";fi
 }
 
 vm.rm() {
@@ -58,21 +59,13 @@ vm.rm() {
 vm.id() {
   VM_NAME="$1"
   ID=$(virsh list --all | grep --color=none "${VM_NAME}" | awk '{print $1}')
-  if [ -z "${ID}" ]; then
-    echo null
-  else
-    echo "${ID}"
-  fi
+  if [ -z "${ID}" ]; then echo "undefined";else echo "${ID}";fi
 }
 
 vm.status() {
   VM_NAME="$1"
   STATUS=$(virsh list --all | grep --color=none "${VM_NAME}" | awk '{print $3}')
-  if [ -z "${STATUS}" ]; then
-    echo null
-  else
-    echo "${STATUS}"
-  fi
+  if [ -z "${STATUS}" ]; then echo "undefined"; else echo "${STATUS}"; fi
 }
 
 vm.describe() {
