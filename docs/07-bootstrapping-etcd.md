@@ -29,24 +29,37 @@ Install prerequisites:
 dnf install -y git golang
 ```
 
-Build etcd: 
+Build etcd
 ```shell
-git clone https://github.com/etcd-io/etcd.git
-cd etcd
-LATEST_RELEASE=$(git tag | grep --color=none '^v[0-9]*\.[0-9]*\.[0-9]*$' | sort | tail -n 1)
-git checkout "$LATEST_RELEASE"
-./build.sh
-sudo cp bin/* /usr/local/bin/
-etcd --version
+{
+  for x in {0..2}; do 
+    NAME="controller${x}"
+    vm.exec ${NAME} '{
+      sudo dnf install -y git golang
+      git clone https://github.com/etcd-io/etcd.git
+      cd etcd
+      LATEST_RELEASE=$(git tag | grep --color=none "^v[0-9]*\.[0-9]*\.[0-9]*\$" | sort | tail -n 1)
+      git checkout "$LATEST_RELEASE"
+      ./build.sh
+      sudo cp bin/* /usr/local/bin/
+      etcd --version
+    }' &
+  done
+}
 ```
 
 ### Configure the etcd Server
 
 ```shell
 {
-  sudo mkdir -p /etc/etcd /var/lib/etcd
-  sudo chmod 700 /var/lib/etcd
-  sudo cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
+  for x in {0..2}; do 
+    NAME="controller${x}"
+    vm.exec ${NAME} '{
+      sudo mkdir -p /etc/etcd /var/lib/etcd
+      sudo chmod 700 /var/lib/etcd
+      sudo cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
+    }'
+  done
 }
 ```
 Each etcd member must have a unique name within an etcd cluster. Set the etcd name to match the hostname of the current
@@ -55,6 +68,7 @@ compute instance.
 Create the `etcd.service` systemd unit file:
 
 ```shell
+{
 C0_NAME="controller0"
 C1_NAME="controller1"
 C2_NAME="controller2"
@@ -105,47 +119,78 @@ WantedBy=multi-user.target
 EOF
 
 vm.scp ${ETCD_CONFIG} ${NAME} '~/etcd.service'
+vm.exec ${NAME} 'sudo mv ~/etcd.service /etc/systemd/system/etcd.service'
+vm.exec ${NAME} 'sudo restorecon -Rv /etc/systemd/system/etcd.service'
 done
-```
-
-In the controller VMs:
-```shell
-sudo cp ./etcd.service /etc/systemd/system/etcd.service
+}
 ```
 
 ### Start the etcd Server
 
-In the controller VMs:
-
 ```shell
 {
-  sudo update-ca-trust
-  sudo systemctl daemon-reload
-  sudo systemctl enable etcd
-  sudo systemctl start etcd
-} &
+  for x in {0..2}; do
+    NAME="controller${x}"
+    vm.exec ${NAME} '{
+      sudo update-ca-trust
+      sudo systemctl daemon-reload
+      sudo systemctl enable etcd
+      sudo systemctl start etcd
+    }'
+  done
+}
 ```
-
-> Remember to run the above commands on each controller node: `controller0`, `controller1`, and `controller2`.
 
 ## Verification
 
 List the etcd cluster members:
 
 ```shell
-sudo ETCDCTL_API=3 etcdctl member list \
-  --endpoints=https://127.0.0.1:2379 \
-  --cacert=/etc/etcd/ca.pem \
-  --cert=/etc/etcd/kubernetes.pem \
-  --key=/etc/etcd/kubernetes-key.pem
+{
+  for x in {0..2}; do
+    NAME="controller${x}"
+    echo -e "\n--------------------------------\nVerifying ETCD for ${NAME}...\n--------------------------------"
+    vm.exec ${NAME} 'sudo ETCDCTL_API=3 etcdctl member list \
+    --endpoints=https://127.0.0.1:2379 \
+    --cacert=/etc/etcd/ca.pem \
+    --cert=/etc/etcd/kubernetes.pem \
+    --key=/etc/etcd/kubernetes-key.pem'
+    echo -e "done\n--------------------------------\n"
+  done
+}
 ```
 
 > output
 
-```shell
-3a57933972cb5131, started, controller2, https://10.240.0.12:2380, https://10.240.0.12:2379, false
-f98dc20bce6225a0, started, controller0, https://10.240.0.10:2380, https://10.240.0.10:2379, false
-ffed16798470cab5, started, controller1, https://10.240.0.11:2380, https://10.240.0.11:2379, false
+```
+--------------------------------
+Verifying ETCD for controller0...
+--------------------------------
+1a8f0fcb350b8243, started, controller1, https://10.0.0.168:2380, https://10.0.0.168:2379, false
+840c6724047449f1, started, controller2, https://10.0.0.176:2380, https://10.0.0.176:2379, false
+df4d2d8b947878cc, started, controller0, https://10.0.0.99:2380, https://10.0.0.99:2379, false
+done
+--------------------------------
+
+
+--------------------------------
+Verifying ETCD for controller1...
+--------------------------------
+1a8f0fcb350b8243, started, controller1, https://10.0.0.168:2380, https://10.0.0.168:2379, false
+840c6724047449f1, started, controller2, https://10.0.0.176:2380, https://10.0.0.176:2379, false
+df4d2d8b947878cc, started, controller0, https://10.0.0.99:2380, https://10.0.0.99:2379, false
+done
+--------------------------------
+
+
+--------------------------------
+Verifying ETCD for controller2...
+--------------------------------
+1a8f0fcb350b8243, started, controller1, https://10.0.0.168:2380, https://10.0.0.168:2379, false
+840c6724047449f1, started, controller2, https://10.0.0.176:2380, https://10.0.0.176:2379, false
+df4d2d8b947878cc, started, controller0, https://10.0.0.99:2380, https://10.0.0.99:2379, false
+done
+--------------------------------
 ```
 
 Next: [Bootstrapping the Kubernetes Control Plane](08-bootstrapping-kubernetes-controllers.md)

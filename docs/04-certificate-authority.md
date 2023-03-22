@@ -5,12 +5,6 @@ using CloudFlare's PKI toolkit, [cfssl](https://github.com/cloudflare/cfssl), th
 Authority, and generate TLS certificates for the following components: etcd, kube-apiserver, kube-controller-manager, 
 kube-scheduler, kubelet, and kube-proxy.
 
-Install `cfssl` and `cfssljson` using:
-```shell
-go install github.com/cloudflare/cfssl/cmd/cfssl@latest
-go install github.com/cloudflare/cfssl/cmd/cfssljson@latest
-```
-
 ## Certificate Authority
 
 In this section you will provision a Certificate Authority that can be used to generate additional TLS certificates.
@@ -302,15 +296,14 @@ kube-scheduler.pem
 
 ### The Kubernetes API Server Certificate
 
-The `kubernetes-the-hard-way` static IP address will be included in the list of subject alternative names for the 
+The kubernetes control plane load-balancer IP address will be included in the list of subject alternative names for the 
 Kubernetes API Server certificate. This will ensure the certificate can be validated by remote clients.
 
 Generate the Kubernetes API Server certificate and private key:
 
 ```shell
 {
-
-KUBERNETES_PUBLIC_ADDRESS="$(vm.ipv4 "lb-controller")"
+KUBERNETES_LB_ADDRESS="$(vm.ipv4 "lb-controller")"
 KUBERNETES_HOSTNAMES="kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.svc.cluster.local"
 IP_0="$(vm.ipv4 "controller0")"
 IP_1="$(vm.ipv4 "controller1")"
@@ -339,7 +332,7 @@ cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
   -config=ca-config.json \
-  -hostname="${IP_0},${IP_1},${IP_2},${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES} " \
+  -hostname="${IP_0},${IP_1},${IP_2},${KUBERNETES_LB_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES} " \
   -profile=kubernetes \
   kubernetes-csr.json | cfssljson -bare kubernetes
 
@@ -357,13 +350,13 @@ kubernetes.pem
 
 ## The Service Account Key Pair
 
-The Kubernetes Controller Manager leverages a key pair to generate and sign service account tokens as described in the [managing service accounts](https://kubernetes.io/docs/admin/service-accounts-admin/) documentation.
+The Kubernetes Controller Manager leverages a key pair to generate and sign service account tokens as described in the 
+[managing service accounts](https://kubernetes.io/docs/admin/service-accounts-admin/) documentation.
 
 Generate the `service-account` certificate and private key:
 
 ```shell
 {
-
 cat > service-account-csr.json <<EOF
 {
   "CN": "service-accounts",

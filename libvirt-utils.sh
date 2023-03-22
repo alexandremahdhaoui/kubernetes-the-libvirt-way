@@ -23,6 +23,40 @@ runcmd:
 EOF
 }
 
+generate_lb_nginx_conf() {
+NAME_PREFIX="${1}"
+PORT="${2}"
+ADDR_0="$(vm.ipv4 "${NAME_PREFIX}0"):${PORT}"
+ADDR_1="$(vm.ipv4 "${NAME_PREFIX}1"):${PORT}"
+ADDR_2="$(vm.ipv4 "${NAME_PREFIX}2"):${PORT}"
+FILEPATH="lb-${NAME_PREFIX}.nginx.conf"
+
+cat <<EOF > "${FILEPATH}"
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log notice;
+pid /run/nginx.pid;
+# Load dynamic modules. See /usr/share/doc/nginx/README.dynamic.
+include /usr/share/nginx/modules/*.conf;
+events {
+    worker_connections 1024;
+}
+# https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/
+http {
+  upstream backend {
+    server ${ADDR_0};
+    server ${ADDR_1};
+    server ${ADDR_2};
+  }
+  server {
+    location / {
+      proxy_pass http://backend;
+    }
+  }
+}
+EOF
+}
+
 vm.new() {
   VM_NAME="$1"
   IMAGE_NAME="$2.qcow2"

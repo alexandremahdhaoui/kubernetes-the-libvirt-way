@@ -53,9 +53,13 @@ The `cfssl` and `cfssljson` command line utilities will be used to provision a [
 
 Install `cfssl` and `cfssljson` using golang
 ```shell
-dnf install golang
 go install github.com/cloudflare/cfssl/cmd/cfssl@latest
 go install github.com/cloudflare/cfssl/cmd/cfssljson@latest
+```
+
+These command will most likely fail, we need to first install golang to build and install the binaries
+```shell
+dnf install -y golang
 ```
 
 ### Verification

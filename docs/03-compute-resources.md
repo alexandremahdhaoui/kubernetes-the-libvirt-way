@@ -29,10 +29,40 @@ Create three compute instances which will host the Kubernetes worker nodes:
 If you need to clean up your server during the tutorial
 ```shell
 {
-  for x in $(ls); do if [ "${x}" == "anaconda-ks.cfg" ]; then
+  for x in $(ls); do if [ "${x}" == "anaconda-ks.cfg" ] || [ "${x}" == "encryption-key" ]; then
     echo keeping artifact "${x}"; else rm -f "${x}";fi;
   done
 }
+```
+
+## Await cloud-init scripts
+
+Because we are provisioning 8 VMs in this section and IO or CPU might be blocking, you can monitor the progress of the
+cloud-init scripts by running the command bellow
+```shell
+vm.exec lb-worker 'sudo tail -f /var/log/cloud-init-output.log'
+```
+
+In my case, we can observe a relatively high IO wait
+```
+[root@n0 ~]# sar 5 55
+Linux 6.1.18-200.fc37.x86_64 (n0.mahdhaoui.com)         03/22/2023      _x86_64_        (16 CPU)
+
+06:23:51 PM     CPU     %user     %nice   %system   %iowait    %steal     %idle
+06:23:56 PM     all      0.55      0.00      0.50     27.37      0.00     71.56
+[...]
+```
+
+More precisely, the bottleneck was block io
+```
+[root@n0 ~]# sar 2 222 -d
+Linux 6.1.18-200.fc37.x86_64 (n0.mahdhaoui.com)         03/22/2023      _x86_64_        (16 CPU)
+
+06:24:52 PM       DEV       tps     rkB/s     wkB/s     dkB/s   areq-sz    aqu-sz     await     %util
+06:24:54 PM       sda     24.50      0.00      0.00      0.00      0.00      0.00      0.10      2.20
+06:24:54 PM       sdb      4.50      0.00     16.75      0.00      3.72      0.00      0.44      0.20
+06:24:54 PM       sdc    196.00    652.00  11760.00      0.00     63.33      9.37     42.77    101.75
+[...]
 ```
 
 ## Provision your VMs
@@ -59,14 +89,45 @@ vm.list
 
 > output
 
-```
-NAME          ZONE        MACHINE_TYPE   PREEMPTIBLE  INTERNAL_IP  EXTERNAL_IP    STATUS
-controller-0  us-west1-c  e2-standard-2               10.240.0.10  XX.XX.XX.XXX   RUNNING
-controller-1  us-west1-c  e2-standard-2               10.240.0.11  XX.XXX.XXX.XX  RUNNING
-controller-2  us-west1-c  e2-standard-2               10.240.0.12  XX.XXX.XX.XXX  RUNNING
-worker-0      us-west1-c  e2-standard-2               10.240.0.20  XX.XX.XXX.XXX  RUNNING
-worker-1      us-west1-c  e2-standard-2               10.240.0.21  XX.XX.XX.XXX   RUNNING
-worker-2      us-west1-c  e2-standard-2               10.240.0.22  XX.XXX.XX.XX   RUNNING
+```json
+[
+  {
+    "id": "1",
+    "name": "controller0",
+    "ipv4": "10.0.0.194",
+    "status": "running"
+  },
+  {
+    "id": "2",
+    "name": "controller1",
+    "ipv4": "10.0.0.35",
+    "status": "running"
+  },
+  {
+    "id": "3",
+    "name": "controller2",
+    "ipv4": "10.0.0.75",
+    "status": "running"
+  },
+  {
+    "id": "4",
+    "name": "worker0",
+    "ipv4": "10.0.0.82",
+    "status": "running"
+  },
+  {
+    "id": "5",
+    "name": "worker1",
+    "ipv4": "10.0.0.76",
+    "status": "running"
+  },
+  {
+    "id": "6",
+    "name": "worker2",
+    "ipv4": "10.0.0.166",
+    "status": "running"
+  }
+]
 ```
 
 If you want to verify your VMs were started successfully
@@ -77,6 +138,8 @@ If you want to verify your VMs were started successfully
   done;done
 }
 ```
+
+
 
 ## Configuring SSH Access
 
@@ -93,7 +156,7 @@ vm.ssh controller0
 Type `exit` at the prompt to exit the `controller0` compute instance:
 
 ```
-$USER@controller-0:~$ exit
+$USER@controller0:~$ exit
 ```
 > output
 
@@ -106,53 +169,23 @@ Connection to XX.XX.XX.XXX closed
 
 Create the load-balancer
 ```shell
-vm.new lb-controller fedora37
-vm.new lb-worker fedora37
+{
+  vm.new lb-controller fedora37
+  vm.new lb-worker fedora37
+}
 ```
 
 Generate the nginx configuration
 ```shell
 {
-generate_lb_nginx_conf() {
-NAME_PREFIX="${1}"
-PORT="${2}"
-ADDR_0="$(vm.id "${NAME_PREFIX}0"):${PORT}"
-ADDR_1="$(vm.id "${NAME_PREFIX}1"):${PORT}"
-ADDR_2="$(vm.id "${NAME_PREFIX}2"):${PORT}"
-FILEPATH="lb-${NAME_PREFIX}.nginx.conf"
-
-cat <<EOF > "${FILEPATH}"
-user nginx;
-worker_processes auto;
-error_log /var/log/nginx/error.log notice;
-pid /run/nginx.pid;
-# Load dynamic modules. See /usr/share/doc/nginx/README.dynamic.
-include /usr/share/nginx/modules/*.conf;
-events {
-    worker_connections 1024;
-}
-# https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/
-http {
-  upstream backend {
-    server ${ADDR_0};
-    server ${ADDR_1};
-    server ${ADDR_2};
-  }
-  server {
-    location / {
-      proxy_pass http://backend;
-    }
-  }
-}
-EOF
-}
-
-generate_lb_nginx_conf worker 6443
-generate_lb_nginx_conf controller 6443
-
-done
+  generate_lb_nginx_conf worker 30000
+  generate_lb_nginx_conf controller 6443
 }
 ```
+
+
+
+Once the execution is done, you can proceed
 
 Distribute the configurations to the load balancer
 ```shell
@@ -161,14 +194,29 @@ Distribute the configurations to the load balancer
     NAME="lb-${x}"
     vm.scp "${NAME}.nginx.conf" "${NAME}" '~/nginx.conf'
     vm.exec "${NAME}" '{
+      sudo dnf install -y nginx
       sudo mv ~/nginx.conf /etc/nginx/nginx.conf
-      sudo dnf install nginx
+      sudo chmod 644 /etc/nginx/nginx.conf
+      sudo restorecon -Rv /etc/nginx/nginx.conf
       sudo systemctl enable --now nginx
+      
     }'
   done
 }
 ```
 
+Verify Nginx is running
+```shell
+{
+  vm.exec lb-worker 'systemctl status nginx'
+  vm.exec lb-controller 'systemctl status nginx'
+}
+```
+
+If you need to troubleshoot nginx 
+```shell
+vm.exec lb-worker 'sudo journalctl -xeu nginx.service'
+```
 
 
 Next: [Provisioning a CA and Generating TLS Certificates](04-certificate-authority.md)

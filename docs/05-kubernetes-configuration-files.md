@@ -8,12 +8,12 @@ also known as kubeconfigs, which enable Kubernetes clients to locate and authent
 In this section you will generate kubeconfig files for the `controller manager`, `kubelet`, `kube-proxy`, and 
 `scheduler` clients and the `admin` user.
 
-### Kubernetes Public IP Address
+### Kubernetes Control Plane load-balancer IP Address
 
 Each kubeconfig requires a Kubernetes API Server to connect to. To support high availability the IP address assigned to
 the internal load balancer fronting the Kubernetes API Servers will be used.
 
-Retrieve the `kubernetes-the-hard-way` load-balancer IP address:
+Retrieve the control plane load-balancer IP address:
 
 ```
 LB_CONTROLLER_IP="$(vm.ipv4 "lb-controller")"
@@ -34,7 +34,8 @@ Generate a kubeconfig file for each worker node:
   LB_CONTROLLER_IP="$(vm.ipv4 "lb-controller")"
   for x in {0..2}; do
     HOSTNAME="worker${x}"
-    kubectl config set-cluster k0 \
+    CLUSTER_NAME="k0"
+    kubectl config set-cluster "${CLUSTER_NAME}" \
       --certificate-authority=ca.pem \
       --embed-certs=true \
       --server=https://${LB_CONTROLLER_IP}:6443 \
@@ -71,7 +72,8 @@ Generate a kubeconfig file for the `kube-proxy` service:
 ```shell
 {
   LB_CONTROLLER_IP="$(vm.ipv4 "lb-controller")"
-  kubectl config set-cluster k0 \
+  CLUSTER_NAME="k0"
+  kubectl config set-cluster "${CLUSTER_NAME}" \
     --certificate-authority=ca.pem \
     --embed-certs=true \
     --server=https://${LB_CONTROLLER_IP}:6443 \
@@ -104,7 +106,8 @@ Generate a kubeconfig file for the `kube-controller-manager` service:
 
 ```shell
 {
-  kubectl config set-cluster kubernetes-the-hard-way \
+  CLUSTER_NAME="k0"
+  kubectl config set-cluster "${CLUSTER_NAME}" \
     --certificate-authority=ca.pem \
     --embed-certs=true \
     --server=https://127.0.0.1:6443 \
@@ -138,7 +141,8 @@ Generate a kubeconfig file for the `kube-scheduler` service:
 
 ```shell
 {
-  kubectl config set-cluster kubernetes-the-hard-way \
+  CLUSTER_NAME="k0"
+  kubectl config set-cluster "${CLUSTER_NAME}" \
     --certificate-authority=ca.pem \
     --embed-certs=true \
     --server=https://127.0.0.1:6443 \
@@ -171,7 +175,8 @@ Generate a kubeconfig file for the `admin` user:
 
 ```shell
 {
-  kubectl config set-cluster kubernetes-the-hard-way \
+  CLUSTER_NAME="k0"
+  kubectl config set-cluster "${CLUSTER_NAME}" \
     --certificate-authority=ca.pem \
     --embed-certs=true \
     --server=https://127.0.0.1:6443 \
