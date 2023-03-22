@@ -39,7 +39,7 @@ Generate a kubeconfig file for each worker node:
       --certificate-authority=ca.pem \
       --embed-certs=true \
       --server=https://${LB_CONTROLLER_IP}:6443 \
-      --kubeconfig=$x}.kubeconfig
+      --kubeconfig=${HOSTNAME}.kubeconfig
   
     kubectl config set-credentials system:node:${HOSTNAME} \
       --client-certificate=${HOSTNAME}.pem \

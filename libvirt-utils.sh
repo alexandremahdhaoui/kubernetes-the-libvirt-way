@@ -26,6 +26,8 @@ EOF
 generate_lb_nginx_conf() {
 NAME_PREFIX="${1}"
 PORT="${2}"
+HEALTH_CHECK="${3}"
+
 ADDR_0="$(vm.ipv4 "${NAME_PREFIX}0"):${PORT}"
 ADDR_1="$(vm.ipv4 "${NAME_PREFIX}1"):${PORT}"
 ADDR_2="$(vm.ipv4 "${NAME_PREFIX}2"):${PORT}"
@@ -51,6 +53,8 @@ http {
   server {
     location / {
       proxy_pass http://backend;
+      # proxy_set_header Host kubernetes.default.svc.cluster.local
+      ${HEALTH_CHECK}
     }
   }
 }

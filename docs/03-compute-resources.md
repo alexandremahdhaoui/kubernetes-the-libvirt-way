@@ -7,6 +7,19 @@ Kubernetes cluster across a single [compute zone](https://cloud.google.com/compu
 > Ensure a default compute zone and region have been set as described in the 
 [Prerequisites](01-prerequisites.md#set-a-default-compute-region-and-zone) lab.
 
+## Cleanup resources
+
+Run the following command to clean up your server and start the tutorial again
+```shell
+{
+  for x in $(ls); do if [ "${x}" == "anaconda-ks.cfg" ] || [ "${x}" == "encryption-key" ]; then
+    echo keeping artifact "${x}"; else rm -rf "${x}";fi;
+  done
+  for x in $(vm.list | jq -r .[].name);do vm.rm $x;done
+  rm -f ~/.ssh/known_hosts
+}
+```
+
 ## Networking
 
 The Kubernetes [networking model](https://kubernetes.io/docs/concepts/cluster-administration/networking/#kubernetes-model)
@@ -22,18 +35,8 @@ The compute instances in this lab will be provisioned using Fedora Cloud 37. Eac
 with a fixed private IP address to simplify the Kubernetes bootstrapping process.
 
 > The Kubernetes cluster CIDR range is defined by the Controller Manager's `--cluster-cidr` flag. In this tutorial the 
-cluster CIDR range will be set to `10.200.0.0/16`, which supports 254 subnets.
+cluster CIDR range will be set to `10.0.0.0/24`.
 
-Create three compute instances which will host the Kubernetes worker nodes:
-
-If you need to clean up your server during the tutorial
-```shell
-{
-  for x in $(ls); do if [ "${x}" == "anaconda-ks.cfg" ] || [ "${x}" == "encryption-key" ]; then
-    echo keeping artifact "${x}"; else rm -f "${x}";fi;
-  done
-}
-```
 
 ## Await cloud-init scripts
 
@@ -71,13 +74,7 @@ Linux 6.1.18-200.fc37.x86_64 (n0.mahdhaoui.com)         03/22/2023      _x86_64_
 for x in controller worker; do for y in {0..2}; do vm.new "${x}${y}" fedora37;done;done
 ```
 
-If you need to delete all machines please run:
-```shell
-{
-  for x in $(vm.list | jq -r .[].name);do vm.rm $x;done
-  rm -f ~/.ssh/known_hosts
-}
-```
+
 
 ### Verification
 
@@ -139,8 +136,6 @@ If you want to verify your VMs were started successfully
 }
 ```
 
-
-
 ## Configuring SSH Access
 
 SSH will be used to configure the controller and worker instances. When connecting to compute instances for the first 
@@ -178,12 +173,10 @@ Create the load-balancer
 Generate the nginx configuration
 ```shell
 {
-  generate_lb_nginx_conf worker 30000
-  generate_lb_nginx_conf controller 6443
+  generate_lb_nginx_conf worker 30000 ""
+  generate_lb_nginx_conf controller 6443 "health_check port=80,uri=/healthz;"
 }
 ```
-
-
 
 Once the execution is done, you can proceed
 
@@ -199,7 +192,6 @@ Distribute the configurations to the load balancer
       sudo chmod 644 /etc/nginx/nginx.conf
       sudo restorecon -Rv /etc/nginx/nginx.conf
       sudo systemctl enable --now nginx
-      
     }'
   done
 }

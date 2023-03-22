@@ -156,7 +156,6 @@ List the etcd cluster members:
     --cert=/etc/etcd/kubernetes.pem \
     --key=/etc/etcd/kubernetes-key.pem'
     echo -e "done\n--------------------------------\n"
-  done
 }
 ```
 
@@ -169,7 +168,6 @@ Verifying ETCD for controller0...
 1a8f0fcb350b8243, started, controller1, https://10.0.0.168:2380, https://10.0.0.168:2379, false
 840c6724047449f1, started, controller2, https://10.0.0.176:2380, https://10.0.0.176:2379, false
 df4d2d8b947878cc, started, controller0, https://10.0.0.99:2380, https://10.0.0.99:2379, false
-done
 --------------------------------
 
 
@@ -179,7 +177,6 @@ Verifying ETCD for controller1...
 1a8f0fcb350b8243, started, controller1, https://10.0.0.168:2380, https://10.0.0.168:2379, false
 840c6724047449f1, started, controller2, https://10.0.0.176:2380, https://10.0.0.176:2379, false
 df4d2d8b947878cc, started, controller0, https://10.0.0.99:2380, https://10.0.0.99:2379, false
-done
 --------------------------------
 
 
@@ -189,7 +186,6 @@ Verifying ETCD for controller2...
 1a8f0fcb350b8243, started, controller1, https://10.0.0.168:2380, https://10.0.0.168:2379, false
 840c6724047449f1, started, controller2, https://10.0.0.176:2380, https://10.0.0.176:2379, false
 df4d2d8b947878cc, started, controller0, https://10.0.0.99:2380, https://10.0.0.99:2379, false
-done
 --------------------------------
 ```
 
