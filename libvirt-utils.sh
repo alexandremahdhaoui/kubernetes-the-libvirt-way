@@ -1,5 +1,5 @@
 make_user_data() {
-cat <<EOF > user-data
+cat <<EOF > /virt/user-data/f37-base
 #cloud-config
 users:
   - name: default
@@ -29,15 +29,15 @@ vm.new() {
   OS_VARIANT=$2
   NET_BRIDGE=virbr2
 
-  /usr/bin/cp -f "/templates/${IMAGE_NAME}" "/images/${VM_NAME}.qcow2"
+  /usr/bin/cp -f "/virt/templates/${IMAGE_NAME}" "/virt/images/${VM_NAME}.qcow2"
 
   virt-install --name "${VM_NAME}"\
     --ram 4096 --vcpus 2\
-    --disk /images/"${VM_NAME}.qcow2"\
+    --disk /virt/images/"${VM_NAME}.qcow2"\
     --os-variant "${OS_VARIANT}" --graphics none\
     --console none --noautoconsole\
     --network bridge="${NET_BRIDGE}"\
-    --cloud-init user-data=user-data
+    --cloud-init user-data=/virt/user-data/f37-base
 }
 
 vm.ipv4() {
@@ -53,7 +53,7 @@ vm.rm() {
   VM_NAME="$1"
   virsh destroy "${VM_NAME}"
   virsh undefine "${VM_NAME}"
-  rm -f /images/"${VM_NAME}.qcow2"
+  rm -f /virt/images/"${VM_NAME}.qcow2"
 }
 
 vm.id() {
@@ -83,10 +83,35 @@ vm.describe() {
 
 vm.list() {
   # get running vm names
-  VM_NAME=$(virsh list | grep --color=none running | awk '{print $2}')
+  VM_NAME=$(virsh list --all | awk 'NR > 2' | awk '{print $2}')
   BUFFER=""
   for x in $VM_NAME; do
     BUFFER+="$(vm.describe "$x")"
   done
   echo "$BUFFER" | jq -s
+}
+
+vm.ssh() {
+  VM_NAME="$1"
+  ssh "clouduser@$(vm.ipv4 "${VM_NAME}")"
+}
+
+vm.scp() {
+  # shellcheck disable=SC2206
+  ARGS=($@)
+  LENGTH_MINUS_TWO="$(("${#ARGS[@]}" - 2))"
+  REMOTE_NAME="${ARGS[-2]}"
+  REMOTE_IP="$(vm.ipv4 "${REMOTE_NAME}")"
+  REMOTE_PATH="${ARGS[-1]}"
+
+  # shellcheck disable=SC2068
+  scp ${ARGS[@]:0:${LENGTH_MINUS_TWO}} "clouduser@${REMOTE_IP}:${REMOTE_PATH}"
+}
+
+vm.exec() {
+  VM_NAME="$1"
+  CMD="$2"
+  # shellcheck disable=SC2068
+  # shellcheck disable=SC2029
+  ssh "clouduser@$(vm.ipv4 "${VM_NAME}")" "${CMD}"
 }
