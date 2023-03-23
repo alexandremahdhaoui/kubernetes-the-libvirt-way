@@ -41,7 +41,7 @@ kubectl version -o json
 
 > output
 
-```
+```json
 {
   "clientVersion": {
     "major": "1",

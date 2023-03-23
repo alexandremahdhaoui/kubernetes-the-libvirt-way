@@ -20,8 +20,14 @@ mkdir -p /virt/images /virt/templates /virt/user-data
 ### Permanently disable swap
 
 ```shell
-sudo systemctl mask "systemd-zram-setup@zram0.service"
-sudo swapoff -a
+vi /etc/fstab
+# And remove the `swap` partitions 
+```
+
+```shell
+# Then add these command to be run on startup (even removing
+systemctl mask "systemd-zram-setup@zram0.service"
+swapoff -a
 ```
 
 ## Virtualization

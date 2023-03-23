@@ -32,12 +32,12 @@ scp...
 
 Just source it
 ```shell
-. <(curl -L https://gitlab.com/alexandre.mahdhaoui/libvirt-utils/-/raw/main/libvirt-utils)
+. <(curl -L https://gitlab.com/alexandre.mahdhaoui/kubernetes-the-libvirt-way/-/raw/main/assets/libvirt-utils)
 ```
 
 Or persist it in your bashrc
 ```shell
-curl -L https://gitlab.com/alexandre.mahdhaoui/kubernetes-the-libvirt-way/-/raw/main/libvirt-utils.sh | tee -a ~/.bashrc
+curl -L https://gitlab.com/alexandre.mahdhaoui/kubernetes-the-libvirt-way/-/raw/main/assets/libvirt-utils.sh | tee -a ~/.bashrc
 . ~/.bashrc
 ```
 
@@ -122,8 +122,21 @@ kubectl version --client -o json
 
 > output
 
-```
-Client Version: version.Info{Major:"1", Minor:"21", GitVersion:"v1.21.0", GitCommit:"cb303e613a121a29364f75cc67d3d580833a7479", GitTreeState:"clean", BuildDate:"2021-04-08T16:31:21Z", GoVersion:"go1.16.1", Compiler:"gc", Platform:"linux/amd64"}
+```json
+{
+  "clientVersion": {
+    "major": "1",
+    "minor": "26",
+    "gitVersion": "v1.26.3",
+    "gitCommit": "9e644106593f3f4aa98f8a84b23db5fa378900bd",
+    "gitTreeState": "clean",
+    "buildDate": "2023-03-23T18:10:41Z",
+    "goVersion": "go1.19.7",
+    "compiler": "gc",
+    "platform": "linux/amd64"
+  },
+  "kustomizeVersion": "v4.5.7"
+}
 ```
 
 Next: [Provisioning Compute Resources](03-compute-resources.md)

@@ -18,7 +18,6 @@ package_upgrade: true
 bootcmd:
   - systemctl mask "systemd-zram-setup@zram0.service"
   - swapoff -a
-  - modprobe ip_conntrack
   - systemctl enable --now qemu-guest-agent
 
 runcmd:
