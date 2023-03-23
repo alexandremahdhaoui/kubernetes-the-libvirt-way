@@ -197,24 +197,25 @@ List of binaries:
 ```shell
 {
   BINARIES="kubectl kube-proxy kubelet"
-  BIN_FOLDER="kube_bin"
+  BIN_FOLDER="./_output/bin"
   BIN_DEST="/usr/local/bin"
   REPO="https://github.com/kubernetes/kubernetes.git"
   REPO_DIR="kubernetes"
+  VERSION="v1.26.3"
   {
-    LATEST_PATCH=$(git ls-remote "${REPO}" | grep "tags/v1\.26\.[0-9]*$" | sed "s/.*tags\///" | sort | tail -n 1)
-    git clone -b "${LATEST_PATCH}" "${REPO}"
+    git clone -b "${VERSION}" "${REPO}"
     cd "${REPO_DIR}"
-    mkdir "${BIN_FOLDER}"
-    for x in ${BINARIES}; do go build -o "${BIN_FOLDER}" "./cmd/${x}";done
+    make
     chmod 755 "./${BIN_FOLDER}"/*
   }
   for x in {0..2}; do
-    NAME="worker${x}"
-    vm.scp "${BIN_FOLDER}" "${NAME}" '~/'
-    vm.exec "${NAME}" "sudo mkdir -p \"${BIN_DEST}\""
-    vm.exec "${NAME}" "sudo mv \"${BIN_FOLDER}\"/* \"${BIN_DEST}\" && sudo rm -rf \"${BIN_FOLDER}\""
-    vm.exec "${NAME}" "sudo restorecon -Rv \"${BIN_DEST}\""
+    HOSTNAME="worker${x}"
+    vm.exec "${HOSTNAME}" "sudo mkdir -p \"${BIN_DEST}\""
+    for binary in ${BINARIES}; do
+      vm.scp "${BIN_FOLDER}/${binary}" "${HOSTNAME}" '~/' 
+      vm.exec "${HOSTNAME}" "sudo mv \"${binary}\" \"${BIN_DEST}\""
+    done
+    vm.exec "${HOSTNAME}" "sudo restorecon -Rv \"${BIN_DEST}\""
   done
   cd
   rm -rf "./${REPO_DIR}"
@@ -567,9 +568,9 @@ vm.exec controller0 'kubectl get nodes --kubeconfig admin.kubeconfig'
 
 ```
 NAME       STATUS   ROLES    AGE   VERSION
-worker-0   Ready    <none>   22s   v1.21.0
-worker-1   Ready    <none>   22s   v1.21.0
-worker-2   Ready    <none>   22s   v1.21.0
+worker0   Ready    <none>   15m   v1.26.3
+worker1   Ready    <none>   14m   v1.26.3
+worker2   Ready    <none>   14m   v1.26.3
 ```
 
 Next: [Configuring kubectl for Remote Access](10-configuring-kubectl.md)

@@ -18,28 +18,33 @@ Create the Kubernetes configuration directory:
 
 ### Build and install Kubernetes Controller Binaries
 
-We will use Kubernetes version `1.26` in its latest patch, therefore we will fetch this information from the official
-github repository.
-Then we will use go to build and install the binaries.
+In this section, we will build and install the kubernetes binaries for the controllers.
 
 ```shell
 {
-  LATEST_PATCH=$(git ls-remote https://github.com/kubernetes/kubernetes.git | grep "tags/v1\.26\.[0-9]*$" | sed "s/.*tags\///" | sort | tail -n 1)
-  git clone -b "${LATEST_PATCH}" https://github.com/kubernetes/kubernetes.git
-  cd kubernetes
-  go build ./cmd/kube-apiserver
-  go build ./cmd/kube-controller-manager
-  go build ./cmd/kube-scheduler
-  go build ./cmd/kubectl
-  chmod 755 kube-apiserver kube-controller-manager kube-scheduler kubectl
+  BINARIES="kube-apiserver kube-controller-manager kube-scheduler kubectl"
+  BIN_FOLDER="./_output/bin"
+  BIN_DEST="/usr/local/bin"
+  REPO="https://github.com/kubernetes/kubernetes.git"
+  REPO_DIR="kubernetes"
+  VERSION="v1.26.3"
+  {
+    git clone -b "${VERSION}" "${REPO}"
+    cd "${REPO_DIR}"
+    make
+    chmod 755 "./${BIN_FOLDER}"/*
+  }
   for x in {0..2}; do
-    NAME="controller${x}"
-    vm.scp kube-apiserver kube-controller-manager kube-scheduler kubectl "${NAME}" '~/'
-    vm.exec "${NAME}" 'sudo mv kube-apiserver kube-controller-manager kube-scheduler kubectl /usr/local/bin'
-    vm.exec "${NAME}" 'sudo restorecon -Rv /usr/local/bin'
+    HOSTNAME="controller${x}"
+    vm.exec "${HOSTNAME}" "sudo mkdir -p \"${BIN_DEST}\""
+    for binary in ${BINARIES}; do
+      vm.scp "${BIN_FOLDER}/${binary}" "${HOSTNAME}" '~/' 
+      vm.exec "${HOSTNAME}" "sudo mv \"${binary}\" \"${BIN_DEST}\""
+    done
+    vm.exec "${HOSTNAME}" "sudo restorecon -Rv \"${BIN_DEST}\""
   done
-  cd -
-  rm -rf ./kubernetes
+  cd
+  rm -rf "./${REPO_DIR}"
 }
 ```
 
@@ -275,7 +280,7 @@ done
       sudo systemctl daemon-reload
       sudo systemctl enable kube-apiserver kube-controller-manager kube-scheduler
       sudo systemctl start kube-apiserver kube-controller-manager kube-scheduler
-      # sudo systemctl restart etcd kube-apiserver kube-controller-manager kube-scheduler
+      sudo systemctl restart etcd kube-apiserver kube-controller-manager kube-scheduler
     }' &
   done
 }
