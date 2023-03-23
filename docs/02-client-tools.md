@@ -37,7 +37,7 @@ Just source it
 
 Or persist it in your bashrc
 ```shell
-curl -L https://gitlab.com/alexandre.mahdhaoui/libvirt-utils/-/raw/main/libvirt-utils | tee -a ~/.bashrc
+curl -L https://gitlab.com/alexandre.mahdhaoui/kubernetes-the-libvirt-way/-/raw/main/libvirt-utils.sh | tee -a ~/.bashrc
 . ~/.bashrc
 ```
 
