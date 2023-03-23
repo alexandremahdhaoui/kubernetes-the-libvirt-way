@@ -70,7 +70,6 @@ Generate the `admin` client certificate and private key:
 
 ```shell
 {
-
 cat > admin-csr.json <<EOF
 {
   "CN": "admin",
@@ -169,7 +168,6 @@ Generate the `kube-controller-manager` client certificate and private key:
 
 ```shell
 {
-
 cat > kube-controller-manager-csr.json <<EOF
 {
   "CN": "system:kube-controller-manager",
@@ -213,7 +211,6 @@ Generate the `kube-proxy` client certificate and private key:
 
 ```shell
 {
-
 cat > kube-proxy-csr.json <<EOF
 {
   "CN": "system:kube-proxy",
@@ -256,7 +253,6 @@ Generate the `kube-scheduler` client certificate and private key:
 
 ```shell
 {
-
 cat > kube-scheduler-csr.json <<EOF
 {
   "CN": "system:kube-scheduler",
@@ -282,7 +278,6 @@ cfssl gencert \
   -config=ca-config.json \
   -profile=kubernetes \
   kube-scheduler-csr.json | cfssljson -bare kube-scheduler
-
 }
 ```
 

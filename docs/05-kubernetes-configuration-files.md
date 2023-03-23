@@ -32,13 +32,18 @@ Generate a kubeconfig file for each worker node:
 ```shell
 {
   LB_CONTROLLER_IP="$(vm.ipv4 "lb-controller")"
+  LB_CONTROLLER_HOST="https://${LB_CONTROLLER_IP}:6443"
+  CONTROLLER_0_HOST="https://$(vm.ipv4 "controller0"):6443"
+  CONTROLLER_1_HOST="https://$(vm.ipv4 "controller1"):6443"
+  CONTROLLER_2_HOST="https://$(vm.ipv4 "controller2"):6443"
+  SERVER="${LB_CONTROLLER_HOST}" # TODO: fix the LB_CONTROLLER_HOST integration
+  CLUSTER_NAME="k0"
   for x in {0..2}; do
     HOSTNAME="worker${x}"
-    CLUSTER_NAME="k0"
     kubectl config set-cluster "${CLUSTER_NAME}" \
       --certificate-authority=ca.pem \
       --embed-certs=true \
-      --server=https://${LB_CONTROLLER_IP}:6443 \
+      --server="${SERVER}" \
       --kubeconfig=${HOSTNAME}.kubeconfig
   
     kubectl config set-credentials system:node:${HOSTNAME} \
@@ -48,7 +53,7 @@ Generate a kubeconfig file for each worker node:
       --kubeconfig=${HOSTNAME}.kubeconfig
   
     kubectl config set-context default \
-      --cluster=k0 \
+      --cluster="${CLUSTER_NAME}" \
       --user=system:node:${HOSTNAME} \
       --kubeconfig=${HOSTNAME}.kubeconfig
   
@@ -72,11 +77,13 @@ Generate a kubeconfig file for the `kube-proxy` service:
 ```shell
 {
   LB_CONTROLLER_IP="$(vm.ipv4 "lb-controller")"
+  LB_CONTROLLER_HOST="https://${LB_CONTROLLER_IP}:6443"
+  SERVER="${LB_CONTROLLER_HOST}" # TODO: fix the LB_CONTROLLER_HOST integration
   CLUSTER_NAME="k0"
   kubectl config set-cluster "${CLUSTER_NAME}" \
     --certificate-authority=ca.pem \
     --embed-certs=true \
-    --server=https://${LB_CONTROLLER_IP}:6443 \
+    --server="${SERVER}" \
     --kubeconfig=kube-proxy.kubeconfig
 
   kubectl config set-credentials system:kube-proxy \
@@ -120,7 +127,7 @@ Generate a kubeconfig file for the `kube-controller-manager` service:
     --kubeconfig=kube-controller-manager.kubeconfig
 
   kubectl config set-context default \
-    --cluster=kubernetes-the-hard-way \
+    --cluster="${CLUSTER_NAME}" \
     --user=system:kube-controller-manager \
     --kubeconfig=kube-controller-manager.kubeconfig
 
@@ -155,7 +162,7 @@ Generate a kubeconfig file for the `kube-scheduler` service:
     --kubeconfig=kube-scheduler.kubeconfig
 
   kubectl config set-context default \
-    --cluster=kubernetes-the-hard-way \
+    --cluster="${CLUSTER_NAME}" \
     --user=system:kube-scheduler \
     --kubeconfig=kube-scheduler.kubeconfig
 
@@ -189,7 +196,7 @@ Generate a kubeconfig file for the `admin` user:
     --kubeconfig=admin.kubeconfig
 
   kubectl config set-context default \
-    --cluster=kubernetes-the-hard-way \
+    --cluster="${CLUSTER_NAME}" \
     --user=admin \
     --kubeconfig=admin.kubeconfig
 
@@ -202,9 +209,6 @@ Results:
 ```
 admin.kubeconfig
 ```
-
-
-## 
 
 ## Distribute the Kubernetes Configuration Files
 

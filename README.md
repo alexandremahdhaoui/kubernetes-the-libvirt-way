@@ -1,14 +1,24 @@
 # Kubernetes the Libvirt way
 
-This tutorial walks you through setting up Kubernetes the hard way. This guide is not for people looking for a fully 
-automated command to bring up a Kubernetes cluster. If that's you then check out the
+This tutorial walks you through setting up Kubernetes the hard way but using Libvirt on your bare metal machine.
+This guide is not for people looking for a fully automated command to bring up a Kubernetes cluster.
+If that's you then check out the
 [Getting Started Guides](https://kubernetes.io/docs/setup).
 
-Kubernetes The Hard Way is optimized for learning, which means taking the long route to ensure you understand each task
+Kubernetes The Libvirt Way is optimized for learning, which means taking the long route to ensure you understand each task
 required to bootstrap a Kubernetes cluster.
 
 > The results of this tutorial should not be viewed as production ready, and may receive limited support from the 
 community, but don't let that stop you from learning!
+
+## Important information
+
+This tutorial will only cover creating a Kubernetes cluster on 1 single bare metal server. The setup using a cluster of
+3 or more bare metal server is not covered here, but I plan to cover it in a next tutorial.
+
+Indeed, creating a VM orchestration cluster using KVM/Libvirt requires more than a few bash functions.
+
+For learning purposes, most of the binaries used in this tutorial will be built from source.
 
 ## Target Audience
 
@@ -20,11 +30,11 @@ understand how everything fits together.
 Kubernetes The Hard Way guides you through bootstrapping a highly available Kubernetes cluster with end-to-end 
 encryption between components and RBAC authentication.
 
-* [kubernetes](https://github.com/kubernetes/kubernetes) v1.21.0
+* [kubernetes](https://github.com/kubernetes/kubernetes) v1.26.0
 * [containerd](https://github.com/containerd/containerd) v1.4.4
 * [coredns](https://github.com/coredns/coredns) v1.8.3
 * [cni](https://github.com/containernetworking/cni) v0.9.1
-* [etcd](https://github.com/etcd-io/etcd) v3.4.15
+* [etcd](https://github.com/etcd-io/etcd) v3.5.7
 
 ## Labs
 

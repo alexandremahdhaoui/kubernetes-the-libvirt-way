@@ -10,15 +10,19 @@ suitable for encrypting Kubernetes Secrets.
 
 Generate an encryption key:
 
-```
-ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64)
+```shell
+{
+  ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64)
+  echo -n "${ENCRYPTION_KEY}" | tee encryption-key
+}
 ```
 
 ## The Encryption Config File
 
 Create the `encryption-config.yaml` encryption config file:
 
-```
+```shell
+{
 cat > encryption-config.yaml <<EOF
 kind: EncryptionConfig
 apiVersion: v1
@@ -32,15 +36,18 @@ resources:
               secret: ${ENCRYPTION_KEY}
       - identity: {}
 EOF
+}
 ```
 
 Copy the `encryption-config.yaml` encryption config file to each controller instance:
 
 ```shell
-for x in {0..2}; do
-  CONTROLLER="controller${x}"
-  vm.scp encryption-config.yaml ${CONTROLLER} '~/'
-done
+{
+  for x in {0..2}; do
+    NAME="controller${x}"
+    vm.scp encryption-config.yaml "${NAME}" '~/'
+  done
+}
 ```
 
 Next: [Bootstrapping the etcd Cluster](07-bootstrapping-etcd.md)

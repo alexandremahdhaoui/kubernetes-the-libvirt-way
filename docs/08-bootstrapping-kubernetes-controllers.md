@@ -36,8 +36,10 @@ Then we will use go to build and install the binaries.
     NAME="controller${x}"
     vm.scp kube-apiserver kube-controller-manager kube-scheduler kubectl "${NAME}" '~/'
     vm.exec "${NAME}" 'sudo mv kube-apiserver kube-controller-manager kube-scheduler kubectl /usr/local/bin'
+    vm.exec "${NAME}" 'sudo restorecon -Rv /usr/local/bin'
   done
   cd -
+  rm -rf ./kubernetes
 }
 ```
 
@@ -66,13 +68,22 @@ Create the `kube-apiserver.service` systemd unit file:
 C0_NAME="controller0"
 C1_NAME="controller1"
 C2_NAME="controller2"
+
 C0_IP="$(vm.ipv4 controller0)"
 C1_IP="$(vm.ipv4 controller1)"
 C2_IP="$(vm.ipv4 controller2)"
 
-KUBERNETES_LB_ADDRESS="$(vm.ipv4 "lb-controller")"
+C0_HOST="https://${C0_IP}:6443"
+C1_HOST="https://${C1_IP}:6443"
+C2_HOST="https://${C2_IP}:6443"
+
+
+LB_CONTROLLER_ADDRESS="$(vm.ipv4 "lb-controller")"
+LB_CONTROLLER_HOST="https://${LB_CONTROLLER_ADDRESS}:6443"
+SERVICE_ACCOUNT_ISSUER="${LB_CONTROLLER_HOST},${C0_HOST},${C1_HOST},${C2_HOST}"
+
 IP_RANGE="10.0.0.0/24"
-ETCD_SERVERS="https://${C0_IP}:2380,https://${C1_IP}:2380,https://${C2_IP}:2380"
+ETCD_SERVERS="https://${C0_IP}:2379,https://${C1_IP}:2379,https://${C2_IP}:2379"
 
 for NAME in "${C0_NAME}" "${C1_NAME}" "${C2_NAME}"; do
 
@@ -103,13 +114,14 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --etcd-servers="${ETCD_SERVERS}" \\
   --event-ttl=1h \\
   --encryption-provider-config=/var/lib/kubernetes/encryption-config.yaml \\
+  --external-hostname="${NAME}" \\
   --kubelet-certificate-authority=/var/lib/kubernetes/ca.pem \\
   --kubelet-client-certificate=/var/lib/kubernetes/kubernetes.pem \\
   --kubelet-client-key=/var/lib/kubernetes/kubernetes-key.pem \\
   --runtime-config='api/all=true' \\
   --service-account-key-file=/var/lib/kubernetes/service-account.pem \\
   --service-account-signing-key-file=/var/lib/kubernetes/service-account-key.pem \\
-  --service-account-issuer=https://${KUBERNETES_LB_ADDRESS}:6443 \\
+  --service-account-issuer="${SERVICE_ACCOUNT_ISSUER}" \\
   --service-cluster-ip-range="${IP_RANGE}" \\
   --service-node-port-range=30000-32767 \\
   --tls-cert-file=/var/lib/kubernetes/kubernetes.pem \\
@@ -122,9 +134,9 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
-vm.scp ${FILENAME} ${NAME} '~/kube-apiserver.service'
-vm.exec ${NAME} 'sudo mv ~/kube-apiserver.service /etc/systemd/system/kube-apiserver.service'
-vm.exec ${NAME} 'sudo restorecon -Rv /etc/systemd/system/kube-apiserver.service'
+vm.scp "${FILENAME}" "${NAME}" '~/kube-apiserver.service'
+vm.exec "${NAME}" 'sudo mv ~/kube-apiserver.service /etc/systemd/system/kube-apiserver.service'
+vm.exec "${NAME}" 'sudo restorecon -Rv /etc/systemd/system/kube-apiserver.service'
 done
 }
 ```
@@ -162,7 +174,7 @@ Documentation=https://github.com/kubernetes/kubernetes
 [Service]
 ExecStart=/usr/local/bin/kube-controller-manager \\
   --bind-address=0.0.0.0 \\
-  --cluster-cidr="${IP_RANGE} \\
+  --cluster-cidr="${IP_RANGE}" \\
   --cluster-name=kubernetes \\
   --cluster-signing-cert-file=/var/lib/kubernetes/ca.pem \\
   --cluster-signing-key-file=/var/lib/kubernetes/ca-key.pem \\
@@ -180,9 +192,9 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
-vm.scp ${FILENAME} ${NAME} '~/kube-controller-manager.service'
-vm.exec ${NAME} 'sudo mv ~/kube-controller-manager.service /etc/systemd/system/kube-controller-manager.service'
-vm.exec ${NAME} 'sudo restorecon -Rv /etc/systemd/system/kube-controller-manager.service'
+vm.scp "${FILENAME}" "${NAME}" '~/kube-controller-manager.service'
+vm.exec "${NAME}" 'sudo mv ~/kube-controller-manager.service /etc/systemd/system/kube-controller-manager.service'
+vm.exec "${NAME}" 'sudo restorecon -Rv /etc/systemd/system/kube-controller-manager.service'
 done
 }
 ```
@@ -198,7 +210,6 @@ Move the `kube-scheduler` kubeconfig into place:
     vm.exec "${NAME}" 'sudo mv kube-scheduler.kubeconfig /var/lib/kubernetes/'
   done
 }
-
 ```
 
 Create the `kube-scheduler.yaml` configuration file:
@@ -207,7 +218,7 @@ Create the `kube-scheduler.yaml` configuration file:
 {
 FILENAME="kube-scheduler.yaml"
 cat <<EOF | tee "${FILENAME}"
-apiVersion: kubescheduler.config.k8s.io/v1beta1
+apiVersion: kubescheduler.config.k8s.io/v1
 kind: KubeSchedulerConfiguration
 clientConnection:
   kubeconfig: "/var/lib/kubernetes/kube-scheduler.kubeconfig"
@@ -216,9 +227,10 @@ leaderElection:
 EOF
 
 for x in {0..2}; do
-  vm.scp ${FILENAME} ${NAME} '~/'
-  vm.exec ${NAME} 'sudo mv ~/kube-scheduler.yaml /etc/kubernetes/config/kube-scheduler.yaml'
-  vm.exec ${NAME} 'sudo restorecon -Rv /etc/kubernetes/config/kube-scheduler.yaml'
+  NAME="controller${x}"
+  vm.scp "${FILENAME}" "${NAME}" '~/'
+  vm.exec "${NAME}" 'sudo mv ~/kube-scheduler.yaml /etc/kubernetes/config/kube-scheduler.yaml'
+  vm.exec "${NAME}" 'sudo restorecon -Rv /etc/kubernetes/config/kube-scheduler.yaml'
 done
 }
 ```
@@ -245,11 +257,11 @@ WantedBy=multi-user.target
 EOF
 
 for x in {0..2}; do
-  vm.scp ${FILENAME} ${NAME} '~/'
-  vm.exec ${NAME} 'sudo mv ~/kube-scheduler.service /etc/systemd/system/kube-scheduler.service'
-  vm.exec ${NAME} 'sudo restorecon -Rv /etc/systemd/system/kube-scheduler.service'
+  NAME="controller${x}"
+  vm.scp "${FILENAME}" "${NAME}" '~/'
+  vm.exec "${NAME}" 'sudo mv ~/kube-scheduler.service /etc/systemd/system/kube-scheduler.service'
+  vm.exec "${NAME}" 'sudo restorecon -Rv /etc/systemd/system/kube-scheduler.service'
 done
-
 }
 ```
 
@@ -263,7 +275,19 @@ done
       sudo systemctl daemon-reload
       sudo systemctl enable kube-apiserver kube-controller-manager kube-scheduler
       sudo systemctl start kube-apiserver kube-controller-manager kube-scheduler
-    }'
+      # sudo systemctl restart etcd kube-apiserver kube-controller-manager kube-scheduler
+    }' &
+  done
+}
+```
+
+### Verify the controller services
+
+```shell
+{
+  for x in {0..2}; do
+    NAME="controller${x}"
+    vm.exec "${NAME}" 'sudo systemctl status kube-apiserver kube-controller-manager kube-scheduler' &
   done
 }
 ```
@@ -287,7 +311,7 @@ Install a basic web server to handle HTTP health checks:
 {
   for x in {0..2}; do
     NAME="controller${x}"
-    vm.exec "${NAME}" 'sudo dnf install -y nginx'
+    vm.exec "${NAME}" 'sudo dnf install -y nginx' &
   done
 }
 ```
@@ -310,7 +334,8 @@ for x in {0..2};do
   NAME="controller${x}"
   vm.scp kubernetes.default.svc.cluster.local "${NAME}" "~/"
   vm.exec "${NAME}" '{
-  sudo mv kubernetes.default.svc.cluster.local /etc/nginx/sites-available/kubernetes.default.svc.cluster.local
+    sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+    sudo mv kubernetes.default.svc.cluster.local /etc/nginx/sites-available/kubernetes.default.svc.cluster.local
     sudo ln -s /etc/nginx/sites-available/kubernetes.default.svc.cluster.local /etc/nginx/sites-enabled/
   }'
 done
@@ -318,19 +343,23 @@ done
 ```
 
 ```shell
-for x in {0..2};do
-  NAME="controller${x}"
-  vm.exec "${NAME}" 'sudo systemctl restart nginx;sudo systemctl enable nginx'
-done
+{
+  for x in {0..2};do
+    NAME="controller${x}"
+    vm.exec "${NAME}" 'sudo systemctl restart nginx;sudo systemctl enable nginx' &
+  done
+}
 ```
 
 ### Verification
 
 ```shell
-for x in {0..2};do
-  NAME="controller${x}"
-  vm.exec "${NAME}" 'kubectl cluster-info --kubeconfig admin.kubeconfig'
-done
+{
+  for x in {0..2};do
+    NAME="controller${x}"
+    vm.exec "${NAME}" 'kubectl cluster-info --kubeconfig admin.kubeconfig'
+  done
+}
 ```
 
 ```
@@ -344,7 +373,6 @@ for x in {0..2};do
   NAME="controller${x}"
   vm.exec "${NAME}" 'curl -H "Host: kubernetes.default.svc.cluster.local" -i http://127.0.0.1/healthz'
 done
-
 ```
 
 ```
@@ -366,7 +394,8 @@ ok
 
 ## RBAC for Kubelet Authorization
 
-In this section you will configure RBAC permissions to allow the Kubernetes API Server to access the Kubelet API on each worker node. Access to the Kubelet API is required for retrieving metrics, logs, and executing commands in pods.
+In this section you will configure RBAC permissions to allow the Kubernetes API Server to access the Kubelet API on each
+worker node. Access to the Kubelet API is required for retrieving metrics, logs, and executing commands in pods.
 
 > This tutorial sets the Kubelet `--authorization-mode` flag to `Webhook`. Webhook mode uses the
 [SubjectAccessReview](https://kubernetes.io/docs/admin/authorization/#checking-api-access) API to determine
@@ -427,6 +456,12 @@ subjects:
     name: kubernetes
 EOF'
 }
+```
+
+### Verify install
+
+```shell
+ vm.exec controller0 'curl -s --cacert /var/lib/kubernetes/ca.pem https://127.0.0.1:6443/version'
 ```
 
 ## The Kubernetes Frontend Load Balancer

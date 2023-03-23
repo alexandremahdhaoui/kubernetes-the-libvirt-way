@@ -38,10 +38,10 @@ with a fixed private IP address to simplify the Kubernetes bootstrapping process
 cluster CIDR range will be set to `10.0.0.0/24`.
 
 
-## Await cloud-init scripts
+## Important information: monitor progress of VM provisioning
 
-Because we are provisioning 8 VMs in this section and IO or CPU might be blocking, you can monitor the progress of the
-cloud-init scripts by running the command bellow
+Because we will be provisioning 8 VMs in this chapter and IO or CPU might be blocking, you can monitor the progress of 
+the cloud-init scripts by running the command bellow
 ```shell
 vm.exec lb-worker 'sudo tail -f /var/log/cloud-init-output.log'
 ```
@@ -74,7 +74,21 @@ Linux 6.1.18-200.fc37.x86_64 (n0.mahdhaoui.com)         03/22/2023      _x86_64_
 for x in controller worker; do for y in {0..2}; do vm.new "${x}${y}" fedora37;done;done
 ```
 
+Please wait your VMs are fully provisioned before continuing. To monitor the progress of VM provisioning, please refer
+to [the previous section](#important-information-monitor-progress-of-vm-provisioning).
 
+
+### Fix hostname and verify the VM were started successfully
+
+```shell
+{
+  for x in controller worker; do for y in {0..2}; do
+    HOSTNAME="${x}${y}"
+    vm.exec "${HOSTNAME}" "sudo hostnamectl set-hostname --static \"${HOSTNAME}\"" 
+    vm.exec "${HOSTNAME}" 'echo "$(hostname)" started successfully'
+  done;done
+}
+```
 
 ### Verification
 
@@ -127,14 +141,6 @@ vm.list
 ]
 ```
 
-If you want to verify your VMs were started successfully
-```shell
-{
-  for x in controller worker; do for y in {0..2}; do
-    vm.exec "${x}${y}" 'echo "$(hostname)" started successfully'
-  done;done
-}
-```
 
 ## Configuring SSH Access
 
@@ -167,6 +173,17 @@ Create the load-balancer
 {
   vm.new lb-controller fedora37
   vm.new lb-worker fedora37
+}
+```
+
+Fix the hostname before continuing
+
+```shell
+{
+  for x in controller worker; do 
+    HOSTNAME="lb-${x}"
+    vm.exec "${HOSTNAME}" "sudo hostnamectl set-hostname --static \"${HOSTNAME}\"" 
+  done
 }
 ```
 

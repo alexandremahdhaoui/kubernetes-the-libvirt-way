@@ -3,52 +3,30 @@
 Kubernetes components are stateless and store cluster state in [etcd](https://github.com/etcd-io/etcd). In this lab you
 will bootstrap a three node etcd cluster and configure it for high availability and secure remote access.
 
-## Prerequisites
+## Download and Install the etcd Binaries
 
-The commands in this lab must be run on each controller instance: `controller0`, `controller1`, and `controller2`.
-Login to each controller instance using the `vm.ssh` command. Example:
+!!! TODO: move all binary build into a builder VM.
 
-```shell
-vm.ssh controller0
-```
-
-### Running commands in parallel with tmux
-
-[tmux](https://github.com/tmux/tmux/wiki) can be used to run commands on multiple compute instances at the same time.
-See the [Running commands in parallel with tmux](01-prerequisites.md#running-commands-in-parallel-with-tmux) section in
-the Prerequisites lab.
-
-## Bootstrapping an etcd Cluster Member
-
-### Download and Install the etcd Binaries
-
-!!! TODO: move the build and install of etcd into a VM
-
-Install prerequisites:
-```shell
-dnf install -y git golang
-```
-
-Build etcd
+Build and install etcd
 ```shell
 {
-  for x in {0..2}; do 
+  dnf install -y git golang
+  git clone https://github.com/etcd-io/etcd.git
+  cd etcd
+  LATEST_RELEASE=$(git tag | grep --color=none "^v[0-9]*\.[0-9]*\.[0-9]*\$" | sort | tail -n 1)
+  git checkout "$LATEST_RELEASE"
+  ./build.sh
+  for x in {0..2}; do
     NAME="controller${x}"
-    vm.exec ${NAME} '{
-      sudo dnf install -y git golang
-      git clone https://github.com/etcd-io/etcd.git
-      cd etcd
-      LATEST_RELEASE=$(git tag | grep --color=none "^v[0-9]*\.[0-9]*\.[0-9]*\$" | sort | tail -n 1)
-      git checkout "$LATEST_RELEASE"
-      ./build.sh
-      sudo cp bin/* /usr/local/bin/
-      etcd --version
-    }' &
+    vm.scp bin/* "${NAME}" '~/'
+    vm.exec "${NAME}" 'sudo cp ~/etcd ~/etcdctl ~/etcdutl /usr/local/bin/;etcd --version'
   done
+  cd -
+  rm -rf ./etcd
 }
 ```
 
-### Configure the etcd Server
+## Configure the etcd Server
 
 ```shell
 {
@@ -85,6 +63,7 @@ IP="$(vm.ipv4 "${NAME}")"
 PEER_URLS="https://${IP}:2380"
 ADVERTISE_CLIENT_URLS="https://${IP}:2379"
 LISTEN_CLIENT_URLS="${ADVERTISE_CLIENT_URLS},https://127.0.0.1:2379"
+LISTEN_METRICS_URLS="https://${IP}:2382,https://127.0.0.1:2382"
 
 ETCD_CONFIG="${NAME}.etcd.service"
 
@@ -107,6 +86,7 @@ ExecStart=/usr/local/bin/etcd \\
   --initial-advertise-peer-urls "${PEER_URLS}" \\
   --listen-peer-urls "${PEER_URLS}" \\
   --listen-client-urls "${LISTEN_CLIENT_URLS}" \\
+  --listen-metrics-urls "${LISTEN_METRICS_URLS}"\\
   --advertise-client-urls "${ADVERTISE_CLIENT_URLS}" \\
   --initial-cluster-token "{INITIAL_CLUSTER_TOKEN}" \\
   --initial-cluster "${INITIAL_CLUSTER}" \\
@@ -125,7 +105,7 @@ done
 }
 ```
 
-### Start the etcd Server
+## Start the etcd Server
 
 ```shell
 {
@@ -136,7 +116,7 @@ done
       sudo systemctl daemon-reload
       sudo systemctl enable etcd
       sudo systemctl start etcd
-    }'
+    }' &
   done
 }
 ```
@@ -156,6 +136,7 @@ List the etcd cluster members:
     --cert=/etc/etcd/kubernetes.pem \
     --key=/etc/etcd/kubernetes-key.pem'
     echo -e "done\n--------------------------------\n"
+  done
 }
 ```
 

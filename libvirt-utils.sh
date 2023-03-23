@@ -16,6 +16,9 @@ package_update: true
 package_upgrade: true
 
 bootcmd:
+  - systemctl mask "systemd-zram-setup@zram0.service"
+  - swapoff -a
+  - modprobe ip_conntrack
   - systemctl enable --now qemu-guest-agent
 
 runcmd:
@@ -143,7 +146,7 @@ vm.scp() {
   REMOTE_PATH="${ARGS[-1]}"
 
   # shellcheck disable=SC2068
-  scp ${ARGS[@]:0:${LENGTH_MINUS_TWO}} "clouduser@${REMOTE_IP}:${REMOTE_PATH}"
+  scp -rp ${ARGS[@]:0:${LENGTH_MINUS_TWO}} "clouduser@${REMOTE_IP}:${REMOTE_PATH}"
 }
 
 vm.exec() {
