@@ -87,29 +87,37 @@ Runtime: go1.12.12
 
 ## Install kubectl
 
-The `kubectl` command line utility is used to interact with the Kubernetes API Server. Download and install `kubectl` 
-from the official release binaries:
+The `kubectl` command line utility is used to interact with the Kubernetes API Server. We will build and install 
+`kubectl` from source.
 
 ### Linux
 
 ```shell
-wget https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
-```
-
-```
-chmod +x kubectl
-```
-
-```shell
-mv kubectl /usr/local/bin/
+{
+  BINARY="kubectl"
+  BIN_FOLDER="./_output/bin"
+  BIN_DEST="/usr/local/bin"
+  REPO="https://github.com/kubernetes/kubernetes.git"
+  REPO_DIR="kubernetes"
+  VERSION="v1.26.3"
+  {
+    git clone -b "${VERSION}" "${REPO}"
+    cd "${REPO_DIR}"
+    make
+    chmod 755 "./${BIN_FOLDER}"/*
+  }
+  mv "${BIN_FOLDER}/${BINARY}" "${BIN_DEST}"
+  cd
+  rm -rf "./${REPO_DIR}"
+}
 ```
 
 ### Verification
 
-Verify `kubectl` version 1.21.0 or higher is installed:
+Verify `kubectl` version 1.26.3 is installed:
 
 ```shell
-kubectl version --client
+kubectl version --client -o json
 ```
 
 > output
