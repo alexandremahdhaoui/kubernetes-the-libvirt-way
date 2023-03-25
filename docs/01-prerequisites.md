@@ -30,6 +30,23 @@ systemctl mask "systemd-zram-setup@zram0.service"
 swapoff -a
 ```
 
+### Install a few binaries
+
+```shell
+dnf update && dnf upgrade
+dnf install -y git jq bridge-utils cloud-utils genisoimage
+```
+
+### Install golang & rust for building binaries
+
+```shell
+dnf install -y golang rust cargo
+```
+
+### Create a bridge
+
+### Create a virtual bridge that will be used for your VMs
+
 ## Virtualization
 
 This tutorial will leverage `KVM` with `libvirt` to provide the virtualization layer.
@@ -45,10 +62,16 @@ curl -Lo /virt/templates/fedora37.qcow2 \
 ```
 
 ### Verify KVM support
-TODO
 
+```shell
+grep -E --color '(vmx|svm)' /proc/cpuinfo
+lsmod | grep -i kvm
+```
 
 ### Install libvirt dependencies
-TODO
+
+```shell
+sudo dnf -y install bridge-utils libvirt virt-install qemu-kvm
+```
 
 Next: [Installing the Client Tools](02-client-tools.md)

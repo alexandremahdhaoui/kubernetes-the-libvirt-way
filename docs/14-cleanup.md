@@ -21,7 +21,7 @@ Delete the controller and worker compute instances:
 ```shell
 {
   for x in $(virsh net-list | awk 'NR > 2 {print $1}'); do
-    virsh net-destroy
+    virsh net-destroy $x
   done
 }
 ```

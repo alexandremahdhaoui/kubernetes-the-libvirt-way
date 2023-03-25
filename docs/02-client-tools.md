@@ -37,7 +37,7 @@ Just source it
 
 Or persist it in your bashrc
 ```shell
-curl -L https://gitlab.com/alexandre.mahdhaoui/kubernetes-the-libvirt-way/-/raw/main/assets/libvirt-utils.sh | tee -a ~/.bashrc
+curl -sL https://gitlab.com/alexandre.mahdhaoui/kubernetes-the-libvirt-way/-/raw/main/assets/libvirt-utils.sh | tee -a ~/.bashrc
 . ~/.bashrc
 ```
 
@@ -98,7 +98,7 @@ The `kubectl` command line utility is used to interact with the Kubernetes API S
   BIN_FOLDER="./_output/bin"
   BIN_DEST="/usr/local/bin"
   REPO="https://github.com/kubernetes/kubernetes.git"
-  REPO_DIR="kubernetes"
+  REPO_DIR="$(basename "${REPO}" .git)"
   VERSION="v1.26.3"
   {
     git clone -b "${VERSION}" "${REPO}"

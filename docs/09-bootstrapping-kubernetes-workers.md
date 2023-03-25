@@ -76,7 +76,7 @@ List of binaries:
   BIN_FILE="crictl"
   BIN_DEST="/usr/local/bin"
   REPO="https://github.com/kubernetes-sigs/cri-tools.git"
-  REPO_DIR="cri-tools"
+  REPO_DIR="$(basename "${REPO}" .git)"
   LATEST_PATCH=$(git ls-remote "${REPO}" | grep "v1\.26\.[0-9]*$" | sed 's/.*tags\///' | sort | tail -n 1)
   {
     git clone -b "${LATEST_PATCH}" "${REPO}"
@@ -102,7 +102,7 @@ List of binaries:
   BIN_FILE="runc"
   BIN_DEST="/usr/local/sbin"
   REPO="https://github.com/opencontainers/runc"
-  REPO_DIR="runc"
+  REPO_DIR="$(basename "${REPO}" .git)"
   {
     dnf install -y libseccomp libseccomp-devel
     git clone "${REPO}"
@@ -131,7 +131,7 @@ List of binaries:
   BIN_FOLDER="cni_bin"
   BIN_DEST="/opt/cni/bin/"
   REPO="https://github.com/containernetworking/plugins.git"
-  REPO_DIR="plugins"
+  REPO_DIR="$(basename "${REPO}" .git)"
   {
     LATEST_PATCH=$(git ls-remote "${REPO}" | grep "v1\.[0-9]*\.[0-9]*$" | sed 's/.*tags\///' | sort | tail -n 1)
     git clone -b "${LATEST_PATCH}" "${REPO}"
@@ -171,7 +171,7 @@ List of binaries:
   BIN_FOLDER="containerd_bin"
   BIN_DEST="/bin/"
   REPO="https://github.com/containerd/containerd.git"
-  REPO_DIR="containerd"
+  REPO_DIR="$(basename "${REPO}" .git)"
   {
     dnf install -y protobuf-compiler
     LATEST_PATCH=$(git ls-remote "${REPO}" | grep "v1\.[0-9]*\.[0-9]*$" | sed 's/.*tags\///' | sort | tail -n 1)
@@ -200,7 +200,7 @@ List of binaries:
   BIN_FOLDER="./_output/bin"
   BIN_DEST="/usr/local/bin"
   REPO="https://github.com/kubernetes/kubernetes.git"
-  REPO_DIR="kubernetes"
+  REPO_DIR="$(basename "${REPO}" .git)"
   VERSION="v1.26.3"
   {
     git clone -b "${VERSION}" "${REPO}"

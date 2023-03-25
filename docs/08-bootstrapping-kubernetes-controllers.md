@@ -26,7 +26,7 @@ In this section, we will build and install the kubernetes binaries for the contr
   BIN_FOLDER="./_output/bin"
   BIN_DEST="/usr/local/bin"
   REPO="https://github.com/kubernetes/kubernetes.git"
-  REPO_DIR="kubernetes"
+  REPO_DIR="$(basename "${REPO}" .git)"
   VERSION="v1.26.3"
   {
     git clone -b "${VERSION}" "${REPO}"

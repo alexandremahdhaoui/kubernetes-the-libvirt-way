@@ -1,30 +1,3 @@
-make_user_data() {
-cat <<EOF > /virt/user-data/f37-base
-#cloud-config
-users:
-  - name: default
-    sudo: ['ALL=(ALL) NOPASSWD:ALL']
-    shell: /bin/bash
-    groups: ["wheel", "sudo"]
-    ssh_authorized_keys:
-      - $AUTHORIZED_KEY
-
-packages:
-  - qemu-guest-agent
-
-package_update: true
-package_upgrade: true
-
-bootcmd:
-  - systemctl mask "systemd-zram-setup@zram0.service"
-  - swapoff -a
-  - systemctl enable --now qemu-guest-agent
-
-runcmd:
-  - restorecon -R ~/.ssh
-EOF
-}
-
 generate_lb_nginx_conf() {
 NAME_PREFIX="${1}"
 PORT="${2}"
@@ -64,20 +37,71 @@ EOF
 }
 
 vm.new() {
-  VM_NAME="$1"
-  IMAGE_NAME="$2.qcow2"
-  OS_VARIANT=$2
-  NET_BRIDGE=virbr2
+  if [ -z "${1}" ];then echo "a hostname should be provided";return 1;fi
+  if [ -z "${2}" ];then echo "an image name should be provided";return 1;fi
 
-  /usr/bin/cp -f "/virt/templates/${IMAGE_NAME}" "/virt/images/${VM_NAME}.qcow2"
+  HOSTNAME="${1}"
+  IMAGE_NAME="${2}.qcow2"
+  OS_VARIANT="${2}"
+  NET_BRIDGE="virbr2"
+  BASE_PATH="/virt"
+  METADATA="${BASE_PATH}/cloud-init/${HOSTNAME}-metadata"
+  USERDATA="${BASE_PATH}/cloud-init/${HOSTNAME}-userdata"
 
-  virt-install --name "${VM_NAME}"\
+  for host in $(vm.list | jq '.[].name'); do
+    if [ "${HOSTNAME}" == "${host}" ]; then
+      echo "Hostname should be unique, ${HOSTNAME} is already set."
+      echo "Exiting..."
+      return 1
+    fi
+  done
+
+  /usr/bin/cp -f "${BASE_PATH}/templates/${IMAGE_NAME}" "${BASE_PATH}/images/${HOSTNAME}.qcow2"
+  vm.cloud_init "${HOSTNAME}"
+
+  virt-install --name "${HOSTNAME}"\
     --ram 4096 --vcpus 2\
-    --disk /virt/images/"${VM_NAME}.qcow2"\
+    --disk /virt/images/"${HOSTNAME}.qcow2"\
     --os-variant "${OS_VARIANT}" --graphics none\
     --console none --noautoconsole\
     --network bridge="${NET_BRIDGE}"\
-    --cloud-init user-data=/virt/user-data/f37-base
+    --cloud-init meta-data="${METADATA}",user-data="${USERDATA}"
+}
+
+vm.cloud_init() {
+HOSTNAME="$1"
+_key_filepath="$(find ~ -name "id*.pub" |head -n 1)"
+AUTHORIZED_KEY="$(cat "${_key_filepath}")"
+UUID="$(uuidgen)"
+DEST_PATH="/virt/cloud-init"
+
+cat <<EOF > "${DEST_PATH}/${HOSTNAME}-userdata"
+#cloud-config
+users:
+  - name: clouduser
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    shell: /bin/bash
+    groups: ["wheel", "sudo"]
+    ssh_authorized_keys:
+      - ${AUTHORIZED_KEY}
+timezone: "Europe/Berlin"
+packages:
+  - qemu-guest-agent
+package_update: true
+package_upgrade: true
+bootcmd:
+  - systemctl mask "systemd-zram-setup@zram0.service"
+  - swapoff -a
+  - systemctl enable --now qemu-guest-agent
+runcmd:
+  - restorecon -R ~/.ssh
+EOF
+
+cat <<EOF > "${DEST_PATH}/${HOSTNAME}-metadata"
+hostname: "${HOSTNAME}"
+instance-id: "${UUID}"
+EOF
+# cloud-localds -m local "${DEST_PATH}/${HOSTNAME}.img" "${DEST_PATH}/${HOSTNAME}-userdata" "${DEST_PATH}/${HOSTNAME}-metadata"
 }
 
 vm.ipv4() {
