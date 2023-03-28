@@ -48,7 +48,7 @@ vm.new() {
   METADATA="${BASE_PATH}/cloud-init/${HOSTNAME}-metadata"
   USERDATA="${BASE_PATH}/cloud-init/${HOSTNAME}-userdata"
 
-  for host in $(vm.list | jq '.[].name'); do
+  for host in $(vm.list | jq -r '.[].name'); do
     if [ "${HOSTNAME}" == "${host}" ]; then
       echo "Hostname should be unique, ${HOSTNAME} is already set."
       echo "Exiting..."

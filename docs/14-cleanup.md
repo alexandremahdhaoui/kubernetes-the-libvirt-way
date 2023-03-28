@@ -8,9 +8,9 @@ Delete the controller and worker compute instances:
 
 ```shell
 {
-  for x in $(ls); do if [ "${x}" == "anaconda-ks.cfg" ] || [ "${x}" == "encryption-key" ]; then
+  for x in $(ls); do if [ "${x}" == "a-file-to-keep" ] || [ "${x}" == "another-one" ]; then
     echo keeping artifact "${x}"; else rm -rf "${x}";fi;
-  done
+    done
   for x in $(vm.list | jq -r .[].name);do vm.rm $x;done
   rm -f ~/.ssh/known_hosts
 }

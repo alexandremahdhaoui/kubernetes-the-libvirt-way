@@ -14,7 +14,7 @@ Please refer to the Fedora Server's install [documentation](TODO).
 
 Please create these folders
 ```shell
-mkdir -p /virt/images /virt/templates /virt/user-data
+mkdir -p /virt/images /virt/templates /virt/cloud-init
 ```
 
 ### Permanently disable swap
