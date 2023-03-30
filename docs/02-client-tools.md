@@ -41,12 +41,6 @@ curl -sL https://gitlab.com/alexandre.mahdhaoui/kubernetes-the-libvirt-way/-/raw
 . ~/.bashrc
 ```
 
-#### Generate the cloud-init user-data file
-
-```shell
-make_user_data
-```
-
 ## Install CFSSL
 
 The `cfssl` and `cfssljson` command line utilities will be used to provision a [PKI Infrastructure](https://en.wikipedia.org/wiki/Public_key_infrastructure) and generate TLS certificates.
